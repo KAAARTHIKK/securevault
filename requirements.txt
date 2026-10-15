@@ -1,0 +1,16 @@
+cryptography
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+alembic
+python-jose[cryptography]
+passlib[bcrypt]
+pydantic-settings
+boto3
+moto
+streamlit
+requests
+pytest
+pytest-cov
+matplotlib
