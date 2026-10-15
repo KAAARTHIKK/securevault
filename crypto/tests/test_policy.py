@@ -38,3 +38,20 @@ def test_versioned_rewrite():
     versions = {"DEPT_CSE": 1, "ROLE_FACULTY": 3, "ROLE_HOD": 1}
     result = policy.to_versioned("(DEPT_CSE and ROLE_FACULTY) or ROLE_HOD", KNOWN, versions)
     assert result == "(DEPT_CSE_V1 and ROLE_FACULTY_V3) or ROLE_HOD_V1"
+
+
+def test_to_logical_strips_versions():
+    assert policy.to_logical("DEPT_CSE_V1 and ROLE_FACULTY_V3") == "DEPT_CSE and ROLE_FACULTY"
+    assert policy.to_logical("(DEPT_CSE_V2 and ROLE_FACULTY_V4) or ROLE_HOD_V1") == \
+        "(DEPT_CSE and ROLE_FACULTY) or ROLE_HOD"
+
+
+def test_to_logical_round_trips_through_to_versioned():
+    """What the re-key worker does: reduce a file's versioned policy back to
+    logical form, then re-apply the current versions."""
+    known = {"DEPT_CSE", "ROLE_FACULTY"}
+    old = policy.to_versioned("DEPT_CSE and ROLE_FACULTY", known, {"DEPT_CSE": 1, "ROLE_FACULTY": 1})
+    logical = policy.to_logical(old)
+    new = policy.to_versioned(logical, known, {"DEPT_CSE": 1, "ROLE_FACULTY": 2})
+    assert old == "DEPT_CSE_V1 and ROLE_FACULTY_V1"
+    assert new == "DEPT_CSE_V1 and ROLE_FACULTY_V2"

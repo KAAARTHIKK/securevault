@@ -65,8 +65,13 @@ def main() -> None:
 
     plaintext = os.urandom(256 * 1024)
     original_sha256 = hashlib.sha256(plaintext).hexdigest()
+    ciphertext_size = aes_stream.ciphertext_size_for(len(plaintext))
 
-    file_id = uuid.uuid4()
+    # /files/init first: the chunk AAD and the KEM's HKDF salt are bound to the
+    # *backend's* file_id, so the size is predicted rather than measured.
+    print("5. POST /files/init...")
+    init_resp = _post(session, "/files/init", json={"ciphertext_size": ciphertext_size, "wrap_mode": "ABE"})
+    file_id = uuid.UUID(init_resp["file_id"])
     key, ct_key = abe_kem.encap(pk, versioned_policy, file_id.bytes)
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -75,14 +80,12 @@ def main() -> None:
         decrypted_path = Path(tmp) / "decrypted.bin"
         plain_path.write_bytes(plaintext)
 
-        print("5. Encrypting locally (AES-256-GCM, chunked)...")
+        print("6. Encrypting locally (AES-256-GCM, chunked)...")
         aes_stream.encrypt_file(str(plain_path), str(cipher_path), key, file_id.bytes)
         ciphertext = cipher_path.read_bytes()
+        assert len(ciphertext) == ciphertext_size, "predicted ciphertext size was wrong"
         ciphertext_sha256 = hashlib.sha256(ciphertext).hexdigest()
         enc_filename, name_nonce = aes_stream.encrypt_filename("e2e_test.bin", key, file_id.bytes)
-
-        print("6. POST /files/init...")
-        init_resp = _post(session, "/files/init", json={"ciphertext_size": len(ciphertext), "wrap_mode": "ABE"})
 
         print("7. PUT ciphertext to real S3...")
         put_resp = requests.put(
@@ -92,7 +95,7 @@ def main() -> None:
 
         print("8. POST /files/{id}/complete...")
         _post(
-            session, "/files/%s/complete" % init_resp["file_id"],
+            session, "/files/%s/complete" % file_id,
             json={
                 "policy_logical": logical_policy,
                 "policy_versioned": versioned_policy,
@@ -105,7 +108,7 @@ def main() -> None:
         )
 
         print("9. GET /files/{id} for the download URL...")
-        detail = _get(session, "/files/%s" % init_resp["file_id"])
+        detail = _get(session, "/files/%s" % file_id)
 
         print("10. Downloading ciphertext from real S3...")
         dl_resp = requests.get(detail["download_url"])
@@ -126,7 +129,7 @@ def main() -> None:
     final_sha256 = hashlib.sha256(decrypted).hexdigest()
     assert final_sha256 == original_sha256, "round-trip hash mismatch!"
 
-    session.post(BASE_URL + "/files/%s/access-result" % init_resp["file_id"], json={"result": "OK"})
+    session.post(BASE_URL + "/files/%s/access-result" % file_id, json={"result": "OK"})
 
     print("\nE2E round trip OK.")
     print("  original sha256:  %s" % original_sha256)

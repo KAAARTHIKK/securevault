@@ -70,6 +70,21 @@ def _check_file_id(file_id: bytes) -> None:
         raise ValueError("file_id must be %d bytes" % FILE_ID_SIZE)
 
 
+def total_chunks_for(plaintext_size: int, chunk_size: int = DEFAULT_CHUNK_SIZE) -> int:
+    """Number of chunks the format uses for a plaintext of this size (0 B still gets 1)."""
+    return max(1, -(-plaintext_size // chunk_size))
+
+
+def ciphertext_size_for(plaintext_size: int, chunk_size: int = DEFAULT_CHUNK_SIZE) -> int:
+    """Exact ciphertext length for a plaintext of this size.
+
+    The client needs this *before* encrypting, because POST /files/init takes
+    ciphertext_size and only then hands back the file_id that encap() and the
+    chunk AAD are bound to.
+    """
+    return HEADER_SIZE + plaintext_size + TAG_SIZE * total_chunks_for(plaintext_size, chunk_size)
+
+
 def encrypt_file(in_path: str, out_path: str, key: bytes, file_id: bytes,
                   chunk_size: int = DEFAULT_CHUNK_SIZE) -> None:
     """Stream-encrypt in_path to out_path under the format above."""

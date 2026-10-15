@@ -123,3 +123,24 @@ def test_filename_decrypt_wrong_file_id_fails():
     enc, nonce = aes_stream.encrypt_filename("secret.docx", key, file_id)
     with pytest.raises(Exception):
         aes_stream.decrypt_filename(enc, nonce, key, other_file_id)
+
+
+@pytest.mark.parametrize("size", [0, 1, 65535, 65536, 65537, 3 * 65536, 1024 * 1024])
+def test_ciphertext_size_prediction_matches_reality(tmp_path, size):
+    """The client calls /files/init (which needs the ciphertext size) before it
+    can encrypt, so the prediction has to be exact."""
+    key = os.urandom(32)
+    file_id = os.urandom(16)
+    plain = tmp_path / "p.bin"
+    cipher = tmp_path / "c.svlt"
+    plain.write_bytes(os.urandom(size))
+
+    aes_stream.encrypt_file(str(plain), str(cipher), key, file_id)
+    assert cipher.stat().st_size == aes_stream.ciphertext_size_for(size)
+
+
+def test_total_chunks_for_counts_a_single_chunk_for_empty_input():
+    assert aes_stream.total_chunks_for(0) == 1
+    assert aes_stream.total_chunks_for(1) == 1
+    assert aes_stream.total_chunks_for(65536) == 1
+    assert aes_stream.total_chunks_for(65537) == 2

@@ -92,3 +92,28 @@ def to_versioned(policy: str, known_attributes: Set[str], versions: Dict[str, in
         else:
             out += " " + tok
     return out
+
+
+_VERSIONED_SUFFIX_RE = re.compile(r"_V\d+$")
+
+
+def to_logical(versioned_policy: str) -> str:
+    """Inverse of to_versioned: strips the _V<n> suffix off every attribute.
+
+    The re-key worker only receives the versioned policy of a file, but has to
+    re-encrypt under the *current* versions, so it reduces back to logical form
+    and re-applies to_versioned with fresh versions.
+    """
+    tokens = tokenize(versioned_policy)
+    out = ""
+    for i, tok in enumerate(tokens):
+        low = tok.lower()
+        if tok in ("(", ")") or low in _OPERATORS:
+            piece = tok if tok in ("(", ")") else low
+        else:
+            piece = _VERSIONED_SUFFIX_RE.sub("", tok)
+        if i == 0 or piece == ")" or tokens[i - 1] == "(":
+            out += piece
+        else:
+            out += " " + piece
+    return out

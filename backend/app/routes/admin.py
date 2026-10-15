@@ -211,7 +211,9 @@ def list_rekey_job_files(
     return [
         RekeyFileItem(
             file_id=f.id, object_key=f.object_key, policy_versioned=f.policy_versioned,
-            ct_key=b64e(f.ct_key) if f.ct_key else None, download_url=storage.presign_get(f.object_key),
+            ct_key=b64e(f.ct_key) if f.ct_key else None,
+            enc_filename=b64e(f.enc_filename), name_nonce=b64e(f.name_nonce),
+            download_url=storage.presign_get(f.object_key),
         )
         for _, f in pending
     ]
