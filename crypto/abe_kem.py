@@ -85,3 +85,11 @@ def serialize_ciphertext(ct) -> bytes:
 
 def deserialize_ciphertext(data: bytes):
     return bytesToObject(data, _group())
+
+
+def serialize_msk(msk) -> bytes:
+    return objectToBytes(msk, _group())
+
+
+def deserialize_msk(data: bytes):
+    return bytesToObject(data, _group())
