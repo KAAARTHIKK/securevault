@@ -13,7 +13,8 @@ from client.ui import require_vault, sidebar_identity  # noqa: E402
 sidebar_identity()
 v = require_vault()
 
-st.title("Files")
+st.title("📂 Files")
+st.caption("Every file in the organization. Downloading decrypts locally, if your attributes satisfy the policy.")
 st.caption(
     "Filenames are encrypted, so a row shows a name only after your key successfully "
     "decrypts it. Denial is decided by the cryptography on this machine, not by the server."

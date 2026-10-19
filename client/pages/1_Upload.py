@@ -17,7 +17,8 @@ MAX_POLICY_ROWS = 6
 sidebar_identity()
 v = require_vault()
 
-st.title("Upload")
+st.title("⬆️ Upload")
+st.caption("Encrypted on this machine before it leaves; only users matching the policy can open it.")
 st.caption(
     "The file is encrypted here, on this machine. The backend receives only the ciphertext "
     "(via a pre-signed S3 PUT), the ABE ciphertext of the file key, and the policy."

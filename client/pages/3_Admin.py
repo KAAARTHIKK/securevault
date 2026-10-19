@@ -17,7 +17,8 @@ if not v.user.get("is_admin"):
     st.error("Admin privileges required.")
     st.stop()
 
-st.title("Admin")
+st.title("🛡️ Admin")
+st.caption("Users and attributes, revocation and re-key jobs, and the audit log.")
 
 try:
     attribute_names = sorted(a["name"] for a in v.api.attributes())
