@@ -12,11 +12,15 @@
 | 06 | [Implementation Plan](06_Implementation_Plan.md) | Repo layout, phases with STOP points, timeline, environment |
 | 07 | [Testing, Benchmarks & Demo](07_Testing_Benchmarks_and_Demo.md) | Test plan, security tests, benchmarks, demo script, viva Q&A |
 | 08 | [Claude Code Build Prompt](08_Claude_Code_Build_Prompt.md) | Single consolidated, phase-gated prompt for building the system |
+| 09 | [Report](09_Report.md) | Architecture, threat model table, benchmark analysis, limitations, future work |
 
 ## Tech summary
 - **Client:** Python 3.8 + Streamlit (runs locally; every crypto operation happens here)
 - **Backend:** FastAPI + SQLAlchemy + PostgreSQL + JWT
 - **Crypto:** `cryptography` (AES-GCM, X25519, HKDF, scrypt) + `charm-crypto` (BSW07 CP-ABE)
 - **Storage:** AWS S3 (ap-south-1), accessed only through pre-signed URLs
-- **Dev infra:** Docker Compose (Postgres + backend); `moto` for offline S3 tests
+- **Dev infra:** Docker Compose (Postgres + backend + client); `moto` for offline S3 tests
 - **Cost:** stays within AWS Free plan credits; everything else is open source
+
+For setup steps, commands and the demo walkthrough, see the repository
+[README](../README.md).

@@ -1,18 +1,32 @@
-cryptography
-fastapi
-uvicorn[standard]
-sqlalchemy
-psycopg2-binary
-alembic
-python-jose[cryptography]
-passlib[bcrypt]
-bcrypt<4.0
-pydantic-settings
-boto3
-moto
-streamlit
-requests
-httpx
-pytest
-pytest-cov
-matplotlib
+# Pinned for the Python 3.8 abe-runtime image (doc 06 Section 2).
+# charm-crypto and PBC are built from source in abe-runtime/Dockerfile.
+
+# crypto core -- cryptography >= 37 for X25519 raw byte encodings in ecc_wrap
+cryptography==41.0.7
+
+# backend
+fastapi==0.104.1
+uvicorn[standard]==0.24.0.post1
+pydantic==2.5.3
+pydantic-settings==2.1.0
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.12.1
+python-jose[cryptography]==3.3.0
+passlib==1.7.4
+bcrypt==3.2.2          # passlib's bcrypt backend self-test breaks on bcrypt 4.x
+boto3==1.33.13
+botocore==1.33.13
+
+# client
+streamlit==1.37.1      # last release supporting Python 3.8; has st.popover and st.rerun
+requests==2.31.0
+
+# benchmarks
+matplotlib==3.7.5
+
+# tests
+pytest==7.4.4
+pytest-cov==4.1.0
+httpx==0.24.1          # fastapi TestClient
+moto[s3]==5.0.28       # 5.x: conftest uses the unified mock_aws API (absent in 4.x)

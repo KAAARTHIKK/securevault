@@ -1,8 +1,25 @@
-"""Shared fixtures for backend tests (doc 07 Section 1.2: moto + a real test DB)."""
+"""Shared fixtures for backend tests (doc 07 Section 1.2: moto + a real test DB).
+
+The environment defaults below must be set before backend.app.config is first
+imported: the tests run against moto and a throwaway database, so the .env
+placeholder checks are relaxed with SECUREVAULT_DEV=1.
+"""
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+os.environ.setdefault("SECUREVAULT_DEV", "1")
+os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://sv:sv@localhost:5432/securevault_test")
+os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
+os.environ.setdefault("KA_PASSPHRASE", "test-ka-passphrase")
+os.environ.setdefault("STORAGE_BACKEND", "moto")
+os.environ.setdefault("AWS_REGION", "ap-south-1")
+os.environ.setdefault("S3_BUCKET", "securevault-test-bucket")
+os.environ.setdefault("AWS_ACCESS_KEY_ID", "testing")
+os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "testing")
+os.environ.setdefault("AWS_SESSION_TOKEN", "testing")
 
 import boto3
 import pytest
@@ -27,6 +44,15 @@ def _schema():
 @pytest.fixture(scope="session", autouse=True)
 def _ka_keys():
     key_authority.setup_and_save()
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Login throttling is process-global, so clear it between tests."""
+    from backend.app import ratelimit
+    ratelimit.reset()
+    yield
+    ratelimit.reset()
 
 
 @pytest.fixture(autouse=True)

@@ -16,6 +16,7 @@ from ..key_authority import load as load_ka
 from crypto import abe_kem
 from ..schemas import (
     AttributeResponse,
+    EccRecipientResponse,
     IssueKeyResponse,
     PublicParamsResponse,
     RegisterEccRequest,
@@ -63,6 +64,29 @@ def register_ecc_key(
     user.ecc_public_key = b64d(body.public_key)
     db.commit()
     return {"status": "ok"}
+
+
+@router.get("/keys/ecc/recipients", response_model=List[EccRecipientResponse])
+def list_ecc_recipients(
+    user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Recipient directory for ECC fallback mode.
+
+    Beyond doc 05's table, but ECC wrapping needs each recipient's X25519
+    *public* key and nothing else exposes it. Public keys only -- never a
+    secret key, and never a file key.
+    """
+    users = (
+        db.query(models.User)
+        .filter(models.User.ecc_public_key.isnot(None))
+        .order_by(models.User.username)
+        .all()
+    )
+    return [
+        EccRecipientResponse(user_id=u.id, username=u.username, public_key=b64e(u.ecc_public_key))
+        for u in users
+    ]
 
 
 @router.get("/attributes", response_model=List[AttributeResponse])

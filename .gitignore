@@ -7,6 +7,11 @@ venv/
 *.env
 !*.env.example
 
+certs/
+*.pem
+*.crt
+*.key
+
 backend/pk.bin
 backend/msk.enc
 *.key.enc

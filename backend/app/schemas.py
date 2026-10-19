@@ -41,6 +41,12 @@ class RegisterEccRequest(BaseModel):
     public_key: str
 
 
+class EccRecipientResponse(BaseModel):
+    user_id: uuid.UUID
+    username: str
+    public_key: str
+
+
 class AttributeResponse(BaseModel):
     name: str
     current_version: int
@@ -143,6 +149,10 @@ class RekeyFileItem(BaseModel):
     object_key: str
     policy_versioned: Optional[str]
     ct_key: Optional[str]
+    # the worker re-encrypts the filename under the new file key, so it needs
+    # the current encrypted filename to recover it with the old key first
+    enc_filename: str
+    name_nonce: str
     download_url: str
 
 

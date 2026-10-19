@@ -30,5 +30,29 @@ services:
       - "8000:8000"
     command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  # The Streamlit client runs in the same ABE runtime image because it imports
+  # crypto/ too -- all encryption and decryption happens in this container,
+  # never in the backend.
+  client:
+    build:
+      context: .
+      dockerfile: abe-runtime/Dockerfile
+    depends_on:
+      - backend
+    env_file:
+      - backend/.env
+    environment:
+      SECUREVAULT_API: http://backend:8000/api/v1
+      SECUREVAULT_HOME: /app/.securevault
+    volumes:
+      - .:/app
+    ports:
+      - "8501:8501"
+    command: >
+      streamlit run client/app.py
+      --server.port 8501
+      --server.address 0.0.0.0
+      --browser.gatherUsageStats false
+
 volumes:
   pgdata:
