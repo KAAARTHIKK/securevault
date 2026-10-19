@@ -58,3 +58,11 @@ def test_failed_login_is_audited(client, db_session):
     rows = db_session.query(models.AuditLog).filter(models.AuditLog.action == "LOGIN_FAILED").all()
     assert len(rows) == 1
     assert rows[0].detail["username"] == "audited"
+
+
+def test_audit_ip_keeps_real_ips_and_drops_non_ip_hosts():
+    from backend.app.audit import _inet_or_none
+    assert _inet_or_none("203.0.113.7") == "203.0.113.7"
+    assert _inet_or_none("::1") == "::1"
+    for bad in ("testclient", "unknown", "", None):
+        assert _inet_or_none(bad) is None

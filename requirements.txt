@@ -29,4 +29,4 @@ matplotlib==3.7.5
 pytest==7.4.4
 pytest-cov==4.1.0
 httpx==0.24.1          # fastapi TestClient
-moto[s3]==4.2.14
+moto[s3]==5.0.28       # 5.x: conftest uses the unified mock_aws API (absent in 4.x)
