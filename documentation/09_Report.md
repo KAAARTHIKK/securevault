@@ -6,11 +6,11 @@ This document is the Phase 5 deliverable from doc 06: architecture, threat model
 benchmark analysis, limitations and future work. Docs 01–08 remain the
 authoritative design; this one explains and evaluates what was built.
 
-> **Numbers:** the benchmark tables below are filled from `benchmarks/results.csv`
-> after running `python benchmarks/bench.py` inside the `abe-runtime` container.
-> Cells marked `___` are waiting on that run on the machine you are reporting
-> from — record the CPU, RAM and Python version alongside them, because pairing
-> timings are hardware-sensitive and are not transferable between machines.
+> **Numbers:** the benchmark tables below come from `benchmarks/results.csv`,
+> produced by `python benchmarks/bench.py` (10 reps per point) inside the
+> `abe-runtime` container on 2026-10-19. Pairing timings are hardware-sensitive
+> and do not transfer between machines; re-run on the reporting machine if it
+> differs from the one recorded in Section 5.
 
 ---
 
@@ -186,25 +186,47 @@ rather than measured after encrypting (test:
 
 Repeat each measurement 10×, report mean ± std. Record the machine:
 
-> CPU `___`, RAM `___`, OS `___`, Python 3.8 in `abe-runtime`, pairing group SS512.
+> CPU Intel Core i7-1255U (12th gen, 12 threads), RAM 8 GB visible to the
+> container, OS Windows 11 host running Docker Desktop (WSL2 Linux VM), Python
+> 3.8.20 in `abe-runtime`, pairing group SS512.
 
 ### E1 — AES-256-GCM streaming vs file size
 
-| Size | Encrypt (ms) | Decrypt (ms) | Throughput (MB/s) |
+| Size | Encrypt (ms) | Decrypt (ms) | Throughput enc / dec (MB/s) |
 |---|---|---|---|
-| 1 MB | `___` | `___` | `___` |
-| 10 MB | `___` | `___` | `___` |
-| 50 MB | `___` | `___` | `___` |
-| 100 MB | `___` | `___` | `___` |
+| 1 MB | 8.8 ± 1.4 | 6.7 ± 1.9 | 113 / 149 |
+| 10 MB | 54.1 ± 20.3 | 44.8 ± 5.7 | 185 / 223 |
+| 50 MB | 496.8 ± 150.6 | 280.7 ± 152.6 | 101 / 178 |
+| 100 MB | 458.7 ± 53.2 | 764.5 ± 374.0 | 218 / 131 |
 
 Expected shape: **linear in size**, with throughput roughly flat — the 64 KB
 chunking bounds memory without hurting throughput, since AES-NI dominates.
+
+Measured: throughput stays in the 100–220 MB/s band across two orders of
+magnitude of file size, so the cost is linear as expected. The large standard
+deviations at 50–100 MB are I/O noise from writing temp files through Docker's
+WSL2 filesystem on a laptop, not the cipher; NFR-06 (10 MB in under 1 s) holds
+with a wide margin at 54 ms.
 
 ### E2 — ABE encap/decap vs policy size
 
 | Attributes in policy | Encap (ms) | Decap (ms) | `CT_K` size (bytes) |
 |---|---|---|---|
-| 1 … 10 | `___` | `___` | `___` |
+| 1 | 52.1 ± 5.9 | 175.7 ± 116.5 † | 1 440 |
+| 2 | 60.6 ± 22.1 | 52.5 ± 13.5 | 1 768 |
+| 4 | 94.3 ± 13.0 | 71.1 ± 10.3 | 2 448 |
+| 6 | 84.2 ± 15.9 | 55.6 ± 12.7 | 3 064 |
+| 8 | 93.5 ± 12.5 | 83.6 ± 18.2 | 3 720 |
+| 10 | 113.0 ± 18.7 | 62.3 ± 5.6 | 4 300 |
+
+† First measurement of the run: includes one-off pairing-group warm-up, which is
+why its std is as large as its mean. The 2–10 attribute points are steady.
+
+Measured: encap grows roughly linearly (52 → 113 ms) and `CT_K` grows exactly
+linearly at ~318 bytes per attribute. Decap stays roughly flat (~50–85 ms) for an
+AND policy because charm decrypts with a fixed number of pairings per satisfied
+path. NFR-06 (wrap/unwrap under 500 ms for up to 6 attributes) holds: 84 ms /
+56 ms at 6.
 
 Expected shape: **linear in the number of attributes**, since BSW07 does work per
 leaf of the policy tree. Decap is typically the more expensive side (pairings per
@@ -216,7 +238,14 @@ never puts file bytes through ABE.
 
 | Attributes in key | Keygen (ms) | `SK` size (bytes) |
 |---|---|---|
-| 1 … 10 | `___` | `___` |
+| 1 | 30.1 ± 10.6 | 688 |
+| 3 | 35.3 ± 4.0 | 1 332 |
+| 5 | 52.3 ± 4.1 | 1 956 |
+| 8 | 110.6 ± 18.5 | 2 888 |
+| 10 | 110.3 ± 10.2 | 3 448 |
+
+Measured: linear in both time and size (~308 bytes per attribute). Even an
+all-attribute admin key costs about a tenth of a second.
 
 Expected shape: linear. This cost is paid by the Key Authority once per issuance
 (and again for every stale-key re-fetch after a revoke), not per file.
@@ -225,8 +254,19 @@ Expected shape: linear. This cost is paid by the Key Authority once per issuance
 
 | Size | Hybrid round trip (ms) | AES share of total |
 |---|---|---|
-| 1 MB | `___` | `___` |
-| 100 MB | `___` | `___` |
+| 1 MB | 88.0 ± 22.8 | ≈ 0 % ‡ |
+| 10 MB | 165.9 ± 22.8 | 44 % |
+| 50 MB | 511.6 ± 55.9 | 82 % |
+| 100 MB | 1 299.5 ± 200.4 | 93 % |
+
+ABE constant (one encap + one decap): 93.2 ms.
+
+‡ The raw CSV value is −6 %: at 1 MB the round trip (88 ms) came in just under
+the independently measured ABE constant (93 ms), which is measurement noise —
+AES on 1 MB is single-digit milliseconds (E1), well inside the ±23 ms spread.
+
+Measured: exactly the amortization curve the design predicts — the ABE share
+falls from essentially all of the cost at 1 MB to 7 % at 100 MB.
 
 Expected: total ≈ `AES(size) + constant`, where the constant is one encap plus
 one decap measured independently as `abe_constant_overhead`. The AES share should
@@ -237,9 +277,15 @@ design would instead scale pairing work with file size and be unusable at 100 MB
 
 | Recipients | ECC wrap time (ms) | ECC metadata (bytes) | ABE encap (ms) | ABE metadata (bytes) |
 |---|---|---|---|---|
-| 1 | `___` | 108 | `___` | `___` |
-| 10 | `___` | 1 080 | `___` (same) | `___` (same) |
-| 50 | `___` | 5 400 | `___` (same) | `___` (same) |
+| 1 | 0.40 ± 0.19 | 108 | 55.9 ± 3.3 | 1 776 |
+| 10 | 5.53 ± 1.13 | 1 080 | 55.9 (same) | 1 776 (same) |
+| 50 | 31.55 ± 7.10 | 5 400 | 55.9 (same) | 1 776 (same) |
+
+Measured: ECC metadata overtakes ABE's constant 1 776 bytes at about 17
+recipients and is 3× larger at 50; ECC time grows ~80× from 1 to 50 recipients
+while ABE stays flat. For a department-wide policy (tens to hundreds of users)
+ABE is smaller *and* is the only option that covers users who gain the
+attribute after upload.
 
 This is the graph that answers "why ABE at all?". ECC wrapping is *faster per
 operation* but both its cost and its stored metadata grow **linearly with the

@@ -11,11 +11,17 @@ worker, the E1-E5 benchmarks, the leakage tests, the hardening pass, and
 doc 08 as the phase plan that produced the code; `README.md` is the operator
 view (setup, commands, demo users).
 
-What is left is not code: the report's benchmark tables in
-`documentation/09_Report.md` carry `___` placeholders until
-`python benchmarks/bench.py` is run inside the `abe-runtime` container on the
-machine being reported from, and the real-AWS checks (`backend/scripts/e2e.py`,
-`backend/scripts/s04_public_access_check.py`) need a configured bucket.
+All of it has been run, not just written: the full suite passes inside
+`abe-runtime`, the report's benchmark tables are filled from a real 10-rep run,
+and `e2e.py` plus the doc 07 Section 3 demo (steps 1-8, including revoke and
+re-key) pass against a real S3 bucket in `ap-south-1`. Run the backend tests
+against a separate database (`DATABASE_URL=...securevault_test`): the test
+session drops every table and regenerates `pk.bin`/`msk.enc` on teardown.
+
+The admin's issued key deliberately holds every version of its attributes
+(`ROLE_FACULTY_V1`, `_V2`, ...). A revoke marks the admin stale too, and the
+re-key worker must decrypt files still under the old version -- a current-only
+admin key locks it out of exactly those files. Do not "simplify" this away.
 
 If asked to change behaviour, keep the doc 08 global rules below intact -- they
 are the point of the project, not style preferences.
