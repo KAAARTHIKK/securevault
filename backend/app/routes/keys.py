@@ -42,7 +42,15 @@ def issue_key(
         .filter(models.UserAttribute.user_id == user.id)
         .all()
     )
-    versioned_attributes = ["%s_V%d" % (name, version) for name, version in rows]
+    if user.is_admin:
+        # The re-key worker decrypts files still under the *old* version after a
+        # revoke, and the revoke also marks the admin stale -- a current-only key
+        # would lock it out of exactly the files it must re-key (doc 03 Section 7).
+        versioned_attributes = [
+            "%s_V%d" % (name, v) for name, version in rows for v in range(1, version + 1)
+        ]
+    else:
+        versioned_attributes = ["%s_V%d" % (name, version) for name, version in rows]
 
     ka = load_ka()
     sk = ka.issue_key(versioned_attributes)

@@ -38,3 +38,21 @@ def test_b05_revoke_bumps_version_staleifies_holders_and_lists_files(client, db_
     stale_check = client.get("/api/v1/files", headers={"Authorization": "Bearer %s" % holder_b_token})
     assert stale_check.status_code == 409
     assert stale_check.json()["detail"]["error"]["code"] == "KEY_STALE"
+
+
+def test_admin_key_after_revoke_still_covers_old_version(client, db_session):
+    """The revoke marks the admin stale too; its re-issued key must still open
+    files under the old version, or the re-key worker cannot re-key them."""
+    target = make_user(db_session, "revoked", "pw", attributes=["ROLE_FACULTY"], key_stale=False)
+    make_user(db_session, "keeper", "pw", attributes=["ROLE_FACULTY"], key_stale=False)
+    make_user(db_session, "boss", "pw", is_admin=True, attributes=["ROLE_FACULTY"], key_stale=False)
+
+    admin_h = {"Authorization": "Bearer %s" % login(client, "boss", "pw")}
+    assert client.delete("/api/v1/admin/users/%s/attributes/ROLE_FACULTY" % target.id,
+                         headers=admin_h).status_code == 200
+
+    admin_attrs = client.post("/api/v1/keys/issue", headers=admin_h).json()["versioned_attributes"]
+    assert {"ROLE_FACULTY_V1", "ROLE_FACULTY_V2"} <= set(admin_attrs)
+
+    keeper_h = {"Authorization": "Bearer %s" % login(client, "keeper", "pw")}
+    assert client.post("/api/v1/keys/issue", headers=keeper_h).json()["versioned_attributes"] == ["ROLE_FACULTY_V2"]
